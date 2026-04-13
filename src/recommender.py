@@ -37,19 +37,52 @@ class Recommender:
     def __init__(self, songs: List[Song]):
         self.songs = songs
 
+    def _user_to_prfs(self, user: UserProfile) -> Dict:
+        """Converts a UserProfile dataclass to the dict format expected by scoring functions."""
+        return {
+            "genre":  user.favorite_genre,
+            "mood":   user.favorite_mood,
+            "energy": user.target_energy,
+        }
+
+    def _song_to_dict(self, song: Song) -> Dict:
+        """Converts a Song dataclass to the dict format expected by scoring functions."""
+        from dataclasses import asdict
+        return asdict(song)
+
     def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
         """
         Returns the top k songs ranked by score for the given user profile.
         Delegates to score_song() for scoring logic.
         """
-        return self.songs[:k]
+        user_prfs  = self._user_to_prfs(user)
+        songs_dict = [self._song_to_dict(s) for s in self.songs]
+        session    = init_session_state(songs_dict)
+
+        tempo_min = min(s["tempo_bpm"] for s in songs_dict)
+        tempo_max = max(s["tempo_bpm"] for s in songs_dict)
+
+        ranked = sorted(
+            [(s, score_song(user_prfs, d, session, tempo_min, tempo_max))
+             for s, d in zip(self.songs, songs_dict)],
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        return [song for song, _ in ranked[:k]]
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
         """
         Returns a human-readable string explaining why the song matches the user.
         Example: "Matches your lofi genre preference and chill mood. Close energy and acousticness."
         """
-        return "Explanation placeholder"
+        user_prfs = self._user_to_prfs(user)
+        song_dict = self._song_to_dict(song)
+        songs_dict = [self._song_to_dict(s) for s in self.songs]
+
+        tempo_min = min(s["tempo_bpm"] for s in songs_dict)
+        tempo_max = max(s["tempo_bpm"] for s in songs_dict)
+
+        return _build_explanation(user_prfs, song_dict, tempo_min, tempo_max)
 
 def load_songs(csv_path: str) -> List[Dict]:
     """
