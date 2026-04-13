@@ -208,4 +208,35 @@ def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_stat
     2. Score each eligible song using score_song()
     3. Sort by score descending, return top k as (song_dict, score, explanation)
     """
-    return []
+    if session_state is None:
+        session_state = init_session_state(songs)
+
+    tempo_min = min(s["tempo_bpm"] for s in songs)
+    tempo_max = max(s["tempo_bpm"] for s in songs)
+
+    scored = sorted(
+        [
+            (song, score_song(user_prfs, song, session_state, tempo_min, tempo_max))
+            for song in songs
+            if is_eligible(song, session_state)
+        ],
+        key=lambda x: x[1],
+        reverse=True,
+    )
+
+    return [
+        (song, score, _build_explanation(user_prfs, song, tempo_min, tempo_max))
+        for song, score in scored[:k]
+    ]
+
+
+def _build_explanation(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> str:
+    """Builds a human-readable explanation of why a song was recommended."""
+    reasons = []
+    if song["genre"] == user_prfs.get("genre", ""):
+        reasons.append(f"genre match ({song['genre']})")
+    if song["mood"] == user_prfs.get("mood", ""):
+        reasons.append(f"mood match ({song['mood']})")
+    vibe = vibe_closeness(user_prfs, song, tempo_min, tempo_max)
+    reasons.append(f"vibe score {vibe:.2f}/1.5")
+    return ", ".join(reasons)
