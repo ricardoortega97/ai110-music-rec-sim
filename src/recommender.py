@@ -149,7 +149,14 @@ def init_session_state(songs: List[Dict]) -> Dict:
         ...
       }
     """
-    return {}
+    state: Dict = {"queue_position": 0}
+    for song in songs:
+        state[song["id"]] = {
+            "skip_count":    0,
+            "disqualified":  False,
+            "cooldown_until": 0,
+        }
+    return state
 
 
 def is_eligible(song: Dict, session_state: Dict) -> bool:
@@ -159,6 +166,11 @@ def is_eligible(song: Dict, session_state: Dict) -> bool:
       - session_state[song_id]["disqualified"] is True, OR
       - session_state["queue_position"] < session_state[song_id]["cooldown_until"]
     """
+    song_state = session_state.get(song["id"], {})
+    if song_state.get("disqualified", False):
+        return False
+    if session_state.get("queue_position", 0) < song_state.get("cooldown_until", 0):
+        return False
     return True
 
 
@@ -173,7 +185,19 @@ def apply_feedback(song_id: int, signal: str, session_state: Dict) -> None:
       "off"  — disqualified = True immediately, regardless of skip_count
     Always increments session_state["queue_position"] by 1.
     """
-    pass
+    song_state = session_state.get(song_id, {})
+
+    if signal == "off":
+        song_state["disqualified"] = True
+    elif signal == "skip":
+        song_state["skip_count"] = song_state.get("skip_count", 0) + 1
+        if song_state["skip_count"] == 1:
+            song_state["cooldown_until"] = session_state.get("queue_position", 0) + 25
+        elif song_state["skip_count"] >= 2:
+            song_state["disqualified"] = True
+
+    session_state[song_id] = song_state
+    session_state["queue_position"] = session_state.get("queue_position", 0) + 1
 
 
 def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_state: Optional[Dict] = None) -> List[Tuple[Dict, float, str]]:
