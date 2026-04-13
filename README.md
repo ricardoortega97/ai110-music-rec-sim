@@ -112,6 +112,53 @@ flowchart TD
 
 ---
 
+# Profile Comparison Reflections
+
+
+## Pair 1: Late-Night Studier vs Gym Grinder
+
+**Profiles:** lofi / chill / energy 0.3 vs rock / intense / energy 0.9
+
+These two profiles sit at opposite ends of the energy scale, and the output reflects that clearly.
+Late-Night Studier surfaces quiet, low-tempo songs (Library Rain, Midnight Coding) while Gym Grinder
+pulls high-energy tracks (Storm Runner, Gym Hero, Iron Pulse). The energy preference is doing real
+work here — the genre and mood labels line up with the energy range, so the scoring is coherent.
+
+Late-Night Studier holds genre-match quality for three spots
+(lofi has 3 songs in the catalog), while Gym Grinder drops sharply after #2 because there is only one rock song. The remaining ranks started to shift to kpop/chill music. 
+— which share the energy level but not the genre or mood. 
+
+![Late-Night Studier output](imgs/latenight.png)
+![Gym Grinder output](imgs/gym.png)
+
+---
+
+## Pair 2: Sunday Morning vs Ghost Listener
+
+**Profiles:** jazz / relaxed / energy 0.4 vs trap / angry / energy 0.5
+
+Sunday Morning targets moderate energy; has a strong match in the beginning but then falls off shifting to lofi. Ghost Listener has the same target but it is not the real aim to do so; it produced identical ranges of energy.
+
+Both resulted the same filter bubble in their lists. Since the catalog does not have similar music to diverse, it will fallback to that bubble. 
+
+![Sunday Morning output](imgs/sunday.png)
+![Ghost Listener output](imgs/ghost.png)
+
+---
+
+## Pair 3: Gym Grinder vs Mismatch Maximizer
+
+**Profiles:** rock / intense / energy 0.9 vs kpop / chill / energy 0.972 
+
+High energy from both profiles, yey Mismatch contradicts itself in a way.The combination of the catalog songs have an energy around 0.42 to 0.8, it will not reach high 0.9s. Gym did get consisted top results, while Mismatch was close. 
+
+Surprising part is rank 2 and 3, Midnight Coding and Library Rain, they are lofi/chill songs with an energy 0.42, Iron Pulse was the only perfect match for Gym. The mood label "chill" earns those lofi songs a +1.0 bonus that more than compensates for their poor energy
+match.
+
+---
+
+
+
 ## Getting Started
 
 ### Setup
@@ -134,6 +181,8 @@ pip install -r requirements.txt
 ```bash
 python -m src.main
 ```
+
+![CLI output](imgs/cli_output.png)
 
 ### Running Tests
 
@@ -175,118 +224,6 @@ You will go deeper on this in your model card.
 
 Read and complete `model_card.md`:
 
-[**Model Card**](model_card.md)
+- [x] [**Model Card**](model_card.md)
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
-
----
-
-## 7. `model_card_template.md`
-
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}  
-
-```markdown
-# 🎧 Model Card - Music Recommender Simulation
-
-## 1. Model Name
-
-Give your recommender a name, for example:
-
-> VibeFinder 1.0
-
----
-
-## 2. Intended Use
-
-- What is this system trying to do
-- Who is it for
-
-Example:
-
-> This model suggests 3 to 5 songs from a small catalog based on a user's preferred genre, mood, and energy level. It is for classroom exploration only, not for real users.
-
----
-
-## 3. How It Works (Short Explanation)
-
-Describe your scoring logic in plain language.
-
-- What features of each song does it consider
-- What information about the user does it use
-- How does it turn those into a number
-
-Try to avoid code in this section, treat it like an explanation to a non programmer.
-
----
-
-## 4. Data
-
-Describe your dataset.
-
-- How many songs are in `data/songs.csv`
-- Did you add or remove any songs
-- What kinds of genres or moods are represented
-- Whose taste does this data mostly reflect
-
----
-
-## 5. Strengths
-
-Where does your recommender work well
-
-You can think about:
-- Situations where the top results "felt right"
-- Particular user profiles it served well
-- Simplicity or transparency benefits
-
----
-
-## 6. Limitations and Bias
-
-Where does your recommender struggle
-
-Some prompts:
-- Does it ignore some genres or moods
-- Does it treat all users as if they have the same taste shape
-- Is it biased toward high energy or one genre by default
-- How could this be unfair if used in a real product
-
----
-
-## 7. Evaluation
-
-How did you check your system
-
-Examples:
-- You tried multiple user profiles and wrote down whether the results matched your expectations
-- You compared your simulation to what a real app like Spotify or YouTube tends to recommend
-- You wrote tests for your scoring logic
-
-You do not need a numeric metric, but if you used one, explain what it measures.
-
----
-
-## 8. Future Work
-
-If you had more time, how would you improve this recommender
-
-Examples:
-
-- Add support for multiple users and "group vibe" recommendations
-- Balance diversity of songs instead of always picking the closest match
-- Use more features, like tempo ranges or lyric themes
-
----
-
-## 9. Personal Reflection
-
-A few sentences about what you learned:
-
-- What surprised you about how your system behaved
-- How did building this change how you think about real music recommenders
-- Where do you think human judgment still matters, even if the model seems "smart"
 
