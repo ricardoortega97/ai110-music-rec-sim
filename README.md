@@ -29,6 +29,87 @@ Some prompts to answer:
 
 You can include a simple diagram or bullet list if helpful.
 
+  **Response:**  
+
+  There are four sections that explain how major platforms have further designed their music recommendation for users. They applied collaborative filtering, where it recommends music that similar users enjoy. The metadata received from the songs assists with content-based recommendations for songs with similar characteristics. These are both used together to adjust the weight factors in cross-reference. With new technology, deep learning and neural networks were used to train. I think what I would use is contextual signals, where it relies on the specific context such as the time of day and user behavior.
+
+  **Changes:**
+
+  The recommendation uses the user's taste profile in the point-weight scoring system where each song is judged against the user's preferences and filtered based on the past feedback. When the feedback from each play happens, it will update the session state, allowing it to feed the next recommendations. 
+
+  **Algorithm Recipe:**  
+  Filter — Before scoring anything, rule out songs the user has already rejected (disqualified) or recently skipped (still in cooldown).
+
+  Score — Every eligible song gets a score built from three signals: does the genre match (+2.0), does the mood match (+1.0), and how close is the song's sonic feel to the user's preference in energy, tempo, valence, and acousticness (+0 to +1.5). A previous skip shaves off -0.5.
+
+  Rank — Sort all scored songs highest to lowest and return the top K.
+
+  Play — The user listens. If they play it through, nothing changes.
+
+  Feedback — If they skip, the song is penalized and put on a 25-song cooldown before it can return. A second skip or an "off" signal disqualifies it entirely. That feedback updates the session state and the cycle repeats from step 1.
+
+  **Potential Biases:**
+
+  - Since the profile only has limited options for the preferences, there could be more skew distance calculations against songs. Adding valence or acousticness could reduce it and improve recommendations.
+  - Static profile during the session until the user shifts the context. If the user is listening to a genre but wants to slowly shift, it will not happen. 
+
+
+  **Data Flow Draft**
+  
+  Inputs(User Profile, songs, session_state) ->  
+  Eligibility Filter(ea. song in catalog: disqualify = drop music, queue less than cooldown = drop in cooldown, pass both = eligible ) ->  
+  Process(Scoring Loop for the user's preference of each song in the csv file) ->  
+  Ranking(sort song and score by descending -> slice Top K) ->  
+  Output( list of songs = Top K results ) ->  
+  Feedback Signals(play through = no change, skipped = first strike, 2nd strike will disqualify the song)
+
+  **Mermaid Data Flow**
+  ```mermaid
+flowchart TD
+    UP["User Profile\n(genre, mood, energy, tempo)"]
+    SC["Song Catalog\n(songs.csv)"]
+    SS["Session State\n(skip_count, disqualified, cooldown_until, queue_position)"]
+
+    EF{"Eligibility Filter"}
+    DROP["Drop Song"]
+
+    SL["Scoring Loop\nscore_song(user, song)"]
+    G["+2.0 Genre Match"]
+    M["+1.0 Mood Match"]
+    V["+0.0 → +1.5 Vibe Closeness\n(energy, tempo, valence, acousticness)"]
+    SK["-0.5 if skip_count == 1"]
+
+    RK["Ranking\nSort by score → Top K"]
+    OUT["Output\n(song, score, explanation) × K"]
+
+    FB{"Feedback Signal"}
+    PLAYED["No Change"]
+    SKIP1["1st Strike\nskip_count += 1\ncooldown_until = queue_pos + 25"]
+    SKIP2["2nd Strike\ndisqualified = True"]
+    OFF["Disqualified = True\n(immediate)"]
+
+    UP --> EF
+    SC --> EF
+    SS --> EF
+
+    EF -- "disqualified or in cooldown" --> DROP
+    EF -- "eligible" --> SL
+
+    SL --> G & M & V & SK --> RK
+    RK --> OUT
+    OUT --> FB
+
+    FB -- "played through" --> PLAYED
+    FB -- "skipped (1st)" --> SKIP1
+    FB -- "skipped (2nd)" --> SKIP2
+    FB -- "off" --> OFF
+
+    SKIP1 --> SS
+    SKIP2 --> SS
+    OFF --> SS
+    SS --> EF
+```
+
 ---
 
 ## Getting Started
