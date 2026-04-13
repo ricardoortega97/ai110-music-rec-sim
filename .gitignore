@@ -15,3 +15,6 @@ venv/
 .pytest_cache/
 
 claude.md
+.claude/
+
+system_design/
