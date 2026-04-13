@@ -13,22 +13,44 @@ from .recommender import load_songs, recommend_songs
 
 
 def main() -> None:
-    songs = load_songs("data/songs.csv") 
+    songs = load_songs("data/songs.csv")
 
-    # Starter example profile
-    # usrprf = {favorite_genre, favorite_mood, target_energy}
     user_prfs = {"genre": "lofi", "mood": "chill", "energy": 0.3}
 
     recommendations = recommend_songs(user_prfs, songs, k=5)
 
-    print("\nTop recommendations:\n")
-    for rec in recommendations:
-        # You decide the structure of each returned item.
-        # A common pattern is: (song, score, explanation)
-        song, score, explanation = rec
-        print(f"{song['title']} - Score: {score:.2f}")
-        print(f"Because: {explanation}")
+    profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
+    header = f"  Top {len(recommendations)} Recommendations  ·  {profile_label}"
+
+    # Auto-size width to the longest line in the output
+    width = max(
+        len(header),
+        max(
+            len(f"  #{i}  {song['title']}   Score: {score:.2f}")
+            for i, (song, score, _) in enumerate(recommendations, start=1)
+        ),
+        max(
+            len(f"       {explanation}")
+            for _, _, explanation in recommendations
+        ),
+    ) + 4
+
+    print()
+    print("─" * width)
+    print(header)
+    print("─" * width)
+
+    for i, (song, score, explanation) in enumerate(recommendations, start=1):
         print()
+        title_line = f"  #{i}  {song['title']}"
+        score_label = f"Score: {score:.2f}"
+        padding = width - len(title_line) - len(score_label) - 2
+        print(f"{title_line}{' ' * max(padding, 1)}{score_label}")
+        print(f"       {song['artist']}  ·  {song['genre']}  ·  {song['mood']}")
+        print(f"       {explanation}")
+
+    print()
+    print("─" * width)
 
 
 if __name__ == "__main__":
