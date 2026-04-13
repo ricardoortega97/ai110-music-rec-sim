@@ -87,8 +87,31 @@ def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: flo
     Normalizes tempo_bpm using tempo_min/tempo_max from the catalog.
     Computes mean absolute distance across: energy, tempo_bpm, valence, acousticness.
     vibe_score = 1.5 * (1 - mean_distance)
+    Only compares features present in user_prfs — missing features are skipped.
     """
-    return 0.0
+    tempo_range = tempo_max - tempo_min
+    song_tempo_norm = (song["tempo_bpm"] - tempo_min) / tempo_range if tempo_range > 0 else 0.5
+
+    comparisons = []
+
+    if "energy" in user_prfs:
+        comparisons.append((song["energy"], float(user_prfs["energy"])))
+
+    if "tempo_bpm" in user_prfs:
+        user_tempo_norm = (float(user_prfs["tempo_bpm"]) - tempo_min) / tempo_range if tempo_range > 0 else 0.5
+        comparisons.append((song_tempo_norm, user_tempo_norm))
+
+    if "valence" in user_prfs:
+        comparisons.append((song["valence"], float(user_prfs["valence"])))
+
+    if "acousticness" in user_prfs:
+        comparisons.append((song["acousticness"], float(user_prfs["acousticness"])))
+
+    if not comparisons:
+        return 0.0
+
+    mean_distance = sum(abs(sv - uv) for sv, uv in comparisons) / len(comparisons)
+    return round(1.5 * (1 - mean_distance), 4)
 
 
 def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: float, tempo_max: float) -> float:
@@ -99,7 +122,21 @@ def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: floa
     +0.0 to +1.5 vibe closeness (calls vibe_closeness)
     -0.5 if session_state skip_count for this song is 1 (first strike)
     """
-    return 0.0
+    score = 0.0
+
+    if song["genre"] == user_prfs.get("genre", ""):
+        score += 2.0
+
+    if song["mood"] == user_prfs.get("mood", ""):
+        score += 1.0
+
+    score += vibe_closeness(user_prfs, song, tempo_min, tempo_max)
+
+    song_state = session_state.get(song["id"], {})
+    if song_state.get("skip_count", 0) == 1:
+        score -= 0.5
+
+    return round(score, 4)
 
 
 def init_session_state(songs: List[Dict]) -> Dict:
