@@ -104,38 +104,42 @@ def load_songs(csv_path: str) -> List[Dict]:
 
 
 def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> float:
-    """Returns 0.0–1.5 score based on normalized feature distance across energy, tempo, valence, and acousticness."""
+    """Returns 0.0–1.5 score based on weighted mean distance across energy (weight 2), tempo, valence, and acousticness (weight 1 each).
+    Energy carries double weight as part of the weight-shift experiment (genre halved 2.0→1.0, energy doubled within vibe)."""
     tempo_range = tempo_max - tempo_min
     song_tempo_norm = (song["tempo_bpm"] - tempo_min) / tempo_range if tempo_range > 0 else 0.5
 
-    comparisons = []
+    # (distance, weight) pairs — energy is weighted 2x, all others 1x
+    weighted: List[Tuple[float, int]] = []
 
     if "energy" in user_prfs:
-        comparisons.append((song["energy"], float(user_prfs["energy"])))
+        weighted.append((abs(song["energy"] - float(user_prfs["energy"])), 2))
 
     if "tempo_bpm" in user_prfs:
         user_tempo_norm = (float(user_prfs["tempo_bpm"]) - tempo_min) / tempo_range if tempo_range > 0 else 0.5
-        comparisons.append((song_tempo_norm, user_tempo_norm))
+        weighted.append((abs(song_tempo_norm - user_tempo_norm), 1))
 
     if "valence" in user_prfs:
-        comparisons.append((song["valence"], float(user_prfs["valence"])))
+        weighted.append((abs(song["valence"] - float(user_prfs["valence"])), 1))
 
     if "acousticness" in user_prfs:
-        comparisons.append((song["acousticness"], float(user_prfs["acousticness"])))
+        weighted.append((abs(song["acousticness"] - float(user_prfs["acousticness"])), 1))
 
-    if not comparisons:
+    if not weighted:
         return 0.0
 
-    mean_distance = sum(abs(sv - uv) for sv, uv in comparisons) / len(comparisons)
+    total_weight = sum(w for _, w in weighted)
+    mean_distance = sum(d * w for d, w in weighted) / total_weight
     return round(1.5 * (1 - mean_distance), 4)
 
 
 def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: float, tempo_max: float) -> float:
-    """Scores one song using genre (+2.0), mood (+1.0), vibe closeness (+0–1.5), and skip penalty (-0.5)."""
+    """Scores one song using genre (+1.0), mood (+1.0), vibe closeness (+0–1.5), and skip penalty (-0.5).
+    Genre halved from 2.0→1.0 as part of weight-shift experiment; energy weighted 2x inside vibe_closeness."""
     score = 0.0
 
     if song["genre"] == user_prfs.get("genre", ""):
-        score += 2.0
+        score += 1.0
 
     if song["mood"] == user_prfs.get("mood", ""):
         score += 1.0

@@ -12,17 +12,25 @@ You will implement the functions in recommender.py:
 from .recommender import load_songs, recommend_songs
 
 
-def main() -> None:
-    songs = load_songs("data/songs.csv")
+USER_PROFILES = [
+    # Late-night study session: low energy lofi, chilled out
+    {"name": "Late-Night Studier", "genre": "lofi",     "mood": "chill",    "energy": 0.3},
+    # High-intensity workout: hard rock, intense mood, max energy
+    {"name": "Gym Grinder",        "genre": "rock",     "mood": "intense",  "energy": 0.9},
+    # Sunday morning wind-down: jazz, relaxed vibe, moderate energy
+    {"name": "Sunday Morning",     "genre": "jazz",     "mood": "relaxed",  "energy": 0.4},
+    # ADVERSARIAL: genre/mood not in dataset — zero categorical hits, ranking falls to vibe only
+    {"name": "Ghost Listener",     "genre": "trap",     "mood": "angry",    "energy": 0.5},
+    # ADVERSARIAL: contradicts itself — lofi/chill genre+mood but max energy; categorical bonus (+3.0) drowns out vibe signal (+1.5 max)
+    {"name": "Mismatch Maximizer", "genre": "kpop",     "mood": "chill",    "energy": 0.97},
+]
 
-    user_prfs = {"genre": "lofi", "mood": "chill", "energy": 0.3}
 
-    recommendations = recommend_songs(user_prfs, songs, k=5)
-
+def _print_recommendations(user_prfs: dict, recommendations: list) -> None:
     profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
-    header = f"  Top {len(recommendations)} Recommendations  ·  {profile_label}"
+    name_label    = user_prfs.get("name", "User")
+    header = f"  {name_label}  ·  Top {len(recommendations)}  ·  {profile_label}"
 
-    # Auto-size width to the longest line in the output
     width = max(
         len(header),
         max(
@@ -42,15 +50,23 @@ def main() -> None:
 
     for i, (song, score, explanation) in enumerate(recommendations, start=1):
         print()
-        title_line = f"  #{i}  {song['title']}"
+        title_line  = f"  #{i}  {song['title']}"
         score_label = f"Score: {score:.2f}"
-        padding = width - len(title_line) - len(score_label) - 2
+        padding     = width - len(title_line) - len(score_label) - 2
         print(f"{title_line}{' ' * max(padding, 1)}{score_label}")
         print(f"       {song['artist']}  ·  {song['genre']}  ·  {song['mood']}")
         print(f"       {explanation}")
 
     print()
     print("─" * width)
+
+
+def main() -> None:
+    songs = load_songs("data/songs.csv")
+
+    for user_prfs in USER_PROFILES:
+        recommendations = recommend_songs(user_prfs, songs, k=5)
+        _print_recommendations(user_prfs, recommendations)
 
 
 if __name__ == "__main__":
