@@ -42,14 +42,14 @@ class Recommender:
         Returns the top k songs ranked by score for the given user profile.
         Delegates to score_song() for scoring logic.
         """
-        raise NotImplementedError
+        return self.songs[:k]
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
         """
         Returns a human-readable string explaining why the song matches the user.
         Example: "Matches your lofi genre preference and chill mood. Close energy and acousticness."
         """
-        raise NotImplementedError
+        return "Explanation placeholder"
 
 def load_songs(csv_path: str) -> List[Dict]:
     """
@@ -57,7 +57,27 @@ def load_songs(csv_path: str) -> List[Dict]:
     Casts numeric fields: id (int), energy/tempo_bpm/valence/danceability/acousticness (float).
     Required by src/main.py
     """
-    raise NotImplementedError
+    import csv
+    songs = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            songs.append({
+                "id":           int(row["id"]),
+                "title":        row["title"],
+                "artist":       row["artist"],
+                "genre":        row["genre"],
+                "mood":         row["mood"],
+                "energy":       float(row["energy"]),
+                "tempo_bpm":    float(row["tempo_bpm"]),
+                "valence":      float(row["valence"]),
+                "danceability": float(row["danceability"]),
+                "acousticness": float(row["acousticness"]),
+            })
+    print(f"Loaded {len(songs)} songs:")
+    for song in songs:
+        print(f"  [{song['id']}] {song['title']} — {song['artist']} ({song['genre']}, {song['mood']})")
+    return songs
 
 
 def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> float:
@@ -68,7 +88,7 @@ def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: flo
     Computes mean absolute distance across: energy, tempo_bpm, valence, acousticness.
     vibe_score = 1.5 * (1 - mean_distance)
     """
-    raise NotImplementedError
+    return 0.0
 
 
 def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: float, tempo_max: float) -> float:
@@ -79,7 +99,7 @@ def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: floa
     +0.0 to +1.5 vibe closeness (calls vibe_closeness)
     -0.5 if session_state skip_count for this song is 1 (first strike)
     """
-    raise NotImplementedError
+    return 0.0
 
 
 def init_session_state(songs: List[Dict]) -> Dict:
@@ -92,7 +112,7 @@ def init_session_state(songs: List[Dict]) -> Dict:
         ...
       }
     """
-    raise NotImplementedError
+    return {}
 
 
 def is_eligible(song: Dict, session_state: Dict) -> bool:
@@ -102,7 +122,7 @@ def is_eligible(song: Dict, session_state: Dict) -> bool:
       - session_state[song_id]["disqualified"] is True, OR
       - session_state["queue_position"] < session_state[song_id]["cooldown_until"]
     """
-    raise NotImplementedError
+    return True
 
 
 def apply_feedback(song_id: int, signal: str, session_state: Dict) -> None:
@@ -116,7 +136,7 @@ def apply_feedback(song_id: int, signal: str, session_state: Dict) -> None:
       "off"  — disqualified = True immediately, regardless of skip_count
     Always increments session_state["queue_position"] by 1.
     """
-    raise NotImplementedError
+    pass
 
 
 def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_state: Optional[Dict] = None) -> List[Tuple[Dict, float, str]]:
@@ -127,4 +147,4 @@ def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_stat
     2. Score each eligible song using score_song()
     3. Sort by score descending, return top k as (song_dict, score, explanation)
     """
-    raise NotImplementedError
+    return []
