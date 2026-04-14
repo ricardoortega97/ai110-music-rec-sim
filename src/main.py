@@ -10,6 +10,7 @@ You will implement the functions in recommender.py:
 """
 
 import argparse
+import textwrap
 
 from .recommender import load_songs, recommend_songs, SCORING_MODES
 
@@ -29,38 +30,70 @@ USER_PROFILES = [
 
 
 def _print_recommendations(user_prfs: dict, recommendations: list) -> None:
-    profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
-    name_label    = user_prfs.get("name", "User")
-    header = f"  {name_label}  ·  Top {len(recommendations)}  ·  {profile_label}"
+    # Column content widths (excludes 1-space padding on each side)
+    W = {"rank": 3, "title": 20, "artist": 14, "style": 20, "score": 5, "why": 38}
+    COLS = list(W.values())
 
-    width = max(
-        len(header),
-        max(
-            len(f"  #{i}  {song['title']}   Score: {score:.2f}")
-            for i, (song, score, _) in enumerate(recommendations, start=1)
-        ),
-        max(
-            len(f"       {explanation}")
-            for _, _, explanation in recommendations
-        ),
-    ) + 4
+    H, V = "─", "│"
+    total_width = sum(w + 2 for w in COLS) + len(COLS) + 1
+
+    def _border(left, mid, right):
+        return left + mid.join(H * (w + 2) for w in COLS) + right
+
+    def _trunc(s: str, n: int) -> str:
+        s = str(s)
+        return s if len(s) <= n else s[:n - 1] + "…"
+
+    def _data_row(rank, title, artist, style, score, why_lines):
+        """Returns one or more table row strings for a single entry (wraps the Why column)."""
+        cells = [
+            f" {rank :<{W['rank']}} ",
+            f" {title:<{W['title']}} ",
+            f" {artist:<{W['artist']}} ",
+            f" {style:<{W['style']}} ",
+            f" {score:>{W['score']}} ",
+        ]
+        prefix = V + V.join(cells) + V
+        blank  = V + V.join(" " * (w + 2) for w in COLS[:-1]) + V
+
+        first = f"{prefix} {(why_lines[0] if why_lines else ''):<{W['why']}} {V}"
+        rest  = [f"{blank} {line:<{W['why']}} {V}" for line in why_lines[1:]]
+        return [first] + rest
+
+    name_label    = user_prfs.get("name", "User")
+    profile_label = f"{user_prfs['genre']}  ·  {user_prfs['mood']}  ·  energy {user_prfs['energy']}"
 
     print()
-    print("─" * width)
-    print(header)
-    print("─" * width)
+    print("═" * total_width)
+    print(f" {name_label}  ·  Top {len(recommendations)}  ·  {profile_label}")
+    print("═" * total_width)
+    print(_border("┌", "┬", "┐"))
+    for line in _data_row("#", "Title", "Artist", "Genre · Mood", "Score", ["Why"]):
+        print(line)
+    print(_border("├", "┼", "┤"))
 
     for i, (song, score, explanation) in enumerate(recommendations, start=1):
-        print()
-        title_line  = f"  #{i}  {song['title']}"
-        score_label = f"Score: {score:.2f}"
-        padding     = width - len(title_line) - len(score_label) - 2
-        print(f"{title_line}{' ' * max(padding, 1)}{score_label}")
-        print(f"       {song['artist']}  ·  {song['genre']}  ·  {song['mood']}")
-        print(f"       {explanation}")
+        style  = _trunc(f"{song['genre']} · {song['mood']}", W["style"])
+        reason = explanation
+        if reason.startswith("Recommended because it "):
+            reason = reason[len("Recommended because it "):]
+        reason = reason.rstrip(".")
+        why_lines = textwrap.wrap(reason, width=W["why"]) or ["—"]
 
-    print()
-    print("─" * width)
+        for line in _data_row(
+            f"#{i}",
+            _trunc(song["title"],  W["title"]),
+            _trunc(song["artist"], W["artist"]),
+            style,
+            f"{score:.2f}",
+            why_lines,
+        ):
+            print(line)
+
+        if i < len(recommendations):
+            print(_border("├", "┼", "┤"))
+
+    print(_border("└", "┴", "┘"))
 
 
 def main() -> None:

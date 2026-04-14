@@ -185,8 +185,14 @@ pip install -r requirements.txt
 ```bash
 python -m src.main
 ```
+**Before**
 
 ![CLI output](imgs/cli_output.png)
+
+**After + Stretch Feature**
+
+![music](/imgs/music_rec.gif)
+
 
 ### Running Tests
 
@@ -217,6 +223,14 @@ python -m src.main --mode genre_first
 python -m src.main --mode mood_first
 python -m src.main --mode energy_focused
 ```
+
+![mood](/imgs/mood_mode.png)
+
+### Visual Summary Table
+
+Recommendations are displayed as a bordered ASCII table instead of a plain card list. Each row shows rank, title, artist, genre/mood, and score in fixed-width columns. The final "Why" column contains the full scoring explanation — genre bonus, mood bonus, and vibe closeness — wrapped across multiple lines so no detail is truncated. No external libraries required; the layout uses only `textwrap` from the standard library.
+
+![visualtable](/imgs/visual_table.png)
 
 ---
 
