@@ -200,27 +200,23 @@ You can add more tests in `tests/test_recommender.py`.
 
 ---
 
-## Experiments You Tried
+## Stretch Features
 
-Use this section to document the experiments you ran. For example:
+### Multiple Scoring Modes
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+Swap the ranking strategy at runtime without changing any code. Three modes are available — each shifts which signal dominates the score:
 
----
+| Mode | What it emphasizes |
+|---|---|
+| `genre_first` | Genre match is worth 2× more than mood |
+| `mood_first` | Mood match is worth 2× more than genre; valence weighted higher in vibe |
+| `energy_focused` | Categorical bonuses are halved; energy carries 4× weight in vibe closeness |
 
-## Limitations and Risks
-
-Summarize some limitations of your recommender.
-
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+```bash
+python -m src.main --mode genre_first
+python -m src.main --mode mood_first
+python -m src.main --mode energy_focused
+```
 
 ---
 

@@ -9,7 +9,9 @@ You will implement the functions in recommender.py:
 - recommend_songs
 """
 
-from .recommender import load_songs, recommend_songs
+import argparse
+
+from .recommender import load_songs, recommend_songs, SCORING_MODES
 
 
 USER_PROFILES = [
@@ -62,10 +64,20 @@ def _print_recommendations(user_prfs: dict, recommendations: list) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Music Recommender Simulation")
+    parser.add_argument(
+        "--mode",
+        choices=list(SCORING_MODES),
+        default="genre_first",
+        help="Scoring strategy to rank songs by. Choices: " + ", ".join(SCORING_MODES),
+    )
+    args = parser.parse_args()
+
     songs = load_songs("data/songs.csv")
+    print(f"\nScoring mode: {args.mode}\n")
 
     for user_prfs in USER_PROFILES:
-        recommendations = recommend_songs(user_prfs, songs, k=5)
+        recommendations = recommend_songs(user_prfs, songs, k=5, mode=args.mode)
         _print_recommendations(user_prfs, recommendations)
 
 

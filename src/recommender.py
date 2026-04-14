@@ -103,48 +103,81 @@ def load_songs(csv_path: str) -> List[Dict]:
     return songs
 
 
-def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> float:
-    """Returns 0.0–1.5 score based on weighted mean distance across energy (weight 2), tempo, valence, and acousticness (weight 1 each).
-    Energy carries double weight as part of the weight-shift experiment (genre halved 2.0→1.0, energy doubled within vibe)."""
+# ---------------------------------------------------------------------------
+# Scoring Modes — weight config dicts for each ranking strategy.
+# Each mode controls the categorical bonuses and the per-feature vibe weights.
+# ---------------------------------------------------------------------------
+SCORING_MODES: Dict[str, Dict] = {
+    "genre_first": {
+        "genre_bonus":    2.0,
+        "mood_bonus":     0.5,
+        "energy_w":       1,
+        "tempo_w":        1,
+        "valence_w":      1,
+        "acousticness_w": 1,
+    },
+    "mood_first": {
+        "genre_bonus":    0.5,
+        "mood_bonus":     2.0,
+        "energy_w":       1,
+        "tempo_w":        1,
+        "valence_w":      2,
+        "acousticness_w": 1,
+    },
+    "energy_focused": {
+        "genre_bonus":    0.5,
+        "mood_bonus":     0.5,
+        "energy_w":       4,
+        "tempo_w":        1,
+        "valence_w":      1,
+        "acousticness_w": 1,
+    },
+}
+
+
+def vibe_closeness(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float, weights: Optional[Dict] = None) -> float:
+    """Returns 0.0–1.5 score based on weighted mean distance across energy, tempo, valence, and acousticness.
+    Per-feature weights come from the active scoring mode (see SCORING_MODES)."""
+    wts = weights or SCORING_MODES["genre_first"]
     tempo_range = tempo_max - tempo_min
     song_tempo_norm = (song["tempo_bpm"] - tempo_min) / tempo_range if tempo_range > 0 else 0.5
 
-    # (distance, weight) pairs — energy is weighted 2x, all others 1x
-    weighted: List[Tuple[float, int]] = []
+    pairs: List[Tuple[float, int]] = []
 
     if "energy" in user_prfs:
-        weighted.append((abs(song["energy"] - float(user_prfs["energy"])), 2))
+        pairs.append((abs(song["energy"] - float(user_prfs["energy"])), wts["energy_w"]))
 
     if "tempo_bpm" in user_prfs:
         user_tempo_norm = (float(user_prfs["tempo_bpm"]) - tempo_min) / tempo_range if tempo_range > 0 else 0.5
-        weighted.append((abs(song_tempo_norm - user_tempo_norm), 1))
+        pairs.append((abs(song_tempo_norm - user_tempo_norm), wts["tempo_w"]))
 
     if "valence" in user_prfs:
-        weighted.append((abs(song["valence"] - float(user_prfs["valence"])), 1))
+        pairs.append((abs(song["valence"] - float(user_prfs["valence"])), wts["valence_w"]))
 
     if "acousticness" in user_prfs:
-        weighted.append((abs(song["acousticness"] - float(user_prfs["acousticness"])), 1))
+        pairs.append((abs(song["acousticness"] - float(user_prfs["acousticness"])), wts["acousticness_w"]))
 
-    if not weighted:
+    if not pairs:
         return 0.0
 
-    total_weight = sum(w for _, w in weighted)
-    mean_distance = sum(d * w for d, w in weighted) / total_weight
+    total_weight = sum(w for _, w in pairs)
+    mean_distance = sum(d * w for d, w in pairs) / total_weight
     return round(1.5 * (1 - mean_distance), 4)
 
 
-def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: float, tempo_max: float) -> float:
-    """Scores one song using genre (+1.0), mood (+1.0), vibe closeness (+0–1.5), and skip penalty (-0.5).
-    Genre halved from 2.0→1.0 as part of weight-shift experiment; energy weighted 2x inside vibe_closeness."""
+def score_song(user_prfs: Dict, song: Dict, session_state: Dict, tempo_min: float, tempo_max: float, weights: Optional[Dict] = None) -> float:
+    """Scores one song using genre bonus, mood bonus, vibe closeness (+0–1.5), and skip penalty (-0.5).
+    Bonus magnitudes and vibe weights are controlled by the active scoring mode (see SCORING_MODES)."""
+    wts = weights or SCORING_MODES["genre_first"]
     score = 0.0
 
     if song["genre"] == user_prfs.get("genre", ""):
-        score += 1.0
+        score += wts["genre_bonus"]
 
     if song["mood"] == user_prfs.get("mood", ""):
-        score += 1.0
+        score += wts["mood_bonus"]
 
-    score += vibe_closeness(user_prfs, song, tempo_min, tempo_max)
+    score += vibe_closeness(user_prfs, song, tempo_min, tempo_max, weights=wts)
 
     song_state = session_state.get(song["id"], {})
     if song_state.get("skip_count", 0) == 1:
@@ -192,17 +225,19 @@ def apply_feedback(song_id: int, signal: str, session_state: Dict) -> None:
     session_state["queue_position"] = session_state.get("queue_position", 0) + 1
 
 
-def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_state: Optional[Dict] = None) -> List[Tuple[Dict, float, str]]:
-    """Filters eligible songs, scores each one, and returns the top k as (song, score, explanation) tuples."""
+def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_state: Optional[Dict] = None, mode: str = "genre_first") -> List[Tuple[Dict, float, str]]:
+    """Filters eligible songs, scores each one, and returns the top k as (song, score, explanation) tuples.
+    Pass mode="mood_first" or mode="energy_focused" to switch ranking strategies (see SCORING_MODES)."""
     if session_state is None:
         session_state = init_session_state(songs)
 
+    weights = SCORING_MODES.get(mode, SCORING_MODES["genre_first"])
     tempo_min = min(s["tempo_bpm"] for s in songs)
     tempo_max = max(s["tempo_bpm"] for s in songs)
 
     scored = sorted(
         [
-            (song, score_song(user_prfs, song, session_state, tempo_min, tempo_max))
+            (song, score_song(user_prfs, song, session_state, tempo_min, tempo_max, weights=weights))
             for song in songs
             if is_eligible(song, session_state)
         ],
@@ -211,29 +246,30 @@ def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_stat
     )
 
     return [
-        (song, score, _build_explanation(user_prfs, song, tempo_min, tempo_max))
+        (song, score, _build_explanation(user_prfs, song, tempo_min, tempo_max, weights=weights))
         for song, score in scored[:k]
     ]
 
 
-def _build_explanation(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> str:
+def _build_explanation(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float, weights: Optional[Dict] = None) -> str:
     """Builds a causal explanation of why a song was recommended, reflecting each scoring component."""
+    wts = weights or SCORING_MODES["genre_first"]
     parts = []
 
     if song["genre"] == user_prfs.get("genre", ""):
-        parts.append(f"matches your {song['genre']} genre preference (+1.0)")
+        parts.append(f"matches your {song['genre']} genre preference (+{wts['genre_bonus']:.1f})")
 
     if song["mood"] == user_prfs.get("mood", ""):
-        parts.append(f"fits your {song['mood']} mood (+1.0)")
+        parts.append(f"fits your {song['mood']} mood (+{wts['mood_bonus']:.1f})")
 
     if "energy" in user_prfs:
         diff = abs(song["energy"] - float(user_prfs["energy"]))
         if diff < 0.15:
             parts.append(
-                f"energy is close to yours ({song['energy']:.2f} vs {float(user_prfs['energy']):.2f}, weighted 2x in vibe)"
+                f"energy is close to yours ({song['energy']:.2f} vs {float(user_prfs['energy']):.2f}, weighted {wts['energy_w']}x in vibe)"
             )
 
-    vibe = vibe_closeness(user_prfs, song, tempo_min, tempo_max)
+    vibe = vibe_closeness(user_prfs, song, tempo_min, tempo_max, weights=wts)
     parts.append(f"overall vibe score {vibe:.2f}/1.50")
 
     if not parts:
