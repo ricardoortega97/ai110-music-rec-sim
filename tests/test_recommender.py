@@ -59,3 +59,16 @@ def test_explain_recommendation_returns_non_empty_string():
     explanation = rec.explain_recommendation(user, song)
     assert isinstance(explanation, str)
     assert explanation.strip() != ""
+
+def test_explanation_is_causal():
+    user = UserProfile(
+        favorite_genre="pop",
+        favorite_mood="happy",
+        target_energy=0.8,
+        likes_acoustic=False,
+    )
+    rec = make_small_recommender()
+    song = rec.songs[0]
+
+    explanation = rec.explain_recommendation(user, song)
+    assert any(word in explanation.lower() for word in ["because", "matches", "close", "fits"])

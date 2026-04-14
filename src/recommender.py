@@ -217,12 +217,25 @@ def recommend_songs(user_prfs: Dict, songs: List[Dict], k: int = 5, session_stat
 
 
 def _build_explanation(user_prfs: Dict, song: Dict, tempo_min: float, tempo_max: float) -> str:
-    """Builds a human-readable explanation of why a song was recommended."""
-    signals = []
+    """Builds a causal explanation of why a song was recommended, reflecting each scoring component."""
+    parts = []
+
     if song["genre"] == user_prfs.get("genre", ""):
-        signals.append(f"Genre match ({song['genre']})")
+        parts.append(f"matches your {song['genre']} genre preference (+1.0)")
+
     if song["mood"] == user_prfs.get("mood", ""):
-        signals.append(f"Mood match ({song['mood']})")
+        parts.append(f"fits your {song['mood']} mood (+1.0)")
+
+    if "energy" in user_prfs:
+        diff = abs(song["energy"] - float(user_prfs["energy"]))
+        if diff < 0.15:
+            parts.append(
+                f"energy is close to yours ({song['energy']:.2f} vs {float(user_prfs['energy']):.2f}, weighted 2x in vibe)"
+            )
+
     vibe = vibe_closeness(user_prfs, song, tempo_min, tempo_max)
-    signals.append(f"Vibe {vibe:.2f}/1.50")
-    return "  |  ".join(signals)
+    parts.append(f"overall vibe score {vibe:.2f}/1.50")
+
+    if not parts:
+        return "No strong match — included by vibe proximity only."
+    return "Recommended because it " + ", ".join(parts) + "."
