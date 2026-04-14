@@ -17,25 +17,29 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+How real-world recommenders use data features.
 
-Some prompts to answer:
+  Real-world recommenders work by extracting numerical features from both the song and the user, then using distance math to surface songs that are closest to the user's taste profile. Two approaches form the foundation. Content-based filtering analyzes a song's audio features — such as tempo, energy, and valence — to find songs with similar characteristics. Collaborative filtering takes the opposite approach: it looks at the behavior of users with similar listening patterns and recommends songs those users enjoyed. Spotify's core engine is largely built on collaborative filtering but combines both into a hybrid approach.
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+  Example:
 
-You can include a simple diagram or bullet list if helpful.
+  When Spotify ingests a new song, an audio analysis pipeline runs and produces a row like:
 
-  **Response:**  
+  `energy=0.82, tempo=128, valence=0.61, acousticness=0.04, danceability=0.75`
 
-  There are four sections that explain how major platforms have further designed their music recommendation for users. They applied collaborative filtering, where it recommends music that similar users enjoy. The metadata received from the songs assists with content-based recommendations for songs with similar characteristics. These are both used together to adjust the weight factors in cross-reference. With new technology, deep learning and neural networks were used to train. I think what I would use is contextual signals, where it relies on the specific context such as the time of day and user behavior.
+  That row is the song's feature vector. The user's profile is also a feature vector built from their listening history. The system computes the distance between the user's vector and every song's vector — songs with the smallest distance are the closest match and become the recommendations.
 
-  **Changes:**
+  Spotify's Smart Shuffle extends this by taking the songs already in your playlist and injecting new recommendations alongside them. The injected songs are selected by:
 
-  The recommendation uses the user's taste profile in the point-weight scoring system where each song is judged against the user's preferences and filtered based on the past feedback. When the feedback from each play happens, it will update the session state, allowing it to feed the next recommendations. 
+  - Matching the audio feature range of nearby songs already in the queue
+  - Drawing from the user's taste neighborhood via collaborative filtering
+  - Avoiding disruption to the current mood and tempo gradient
+
+
+
+  **This System:**
+
+  This simulation mirrors content-based filtering. Each song is scored against the user's taste profile using a point-weight system — genre, mood, and audio feature closeness each contribute to the score. Feedback from each play updates the session state, which filters what is eligible in the next round of recommendations.
 
   **Algorithm Recipe:**  
   Filter — Before scoring anything, rule out songs the user has already rejected (disqualified) or recently skipped (still in cooldown).
